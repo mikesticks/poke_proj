@@ -1,4 +1,7 @@
 import os
+import argparse
+import pandas as pd
+
 from pathlib import Path
 
 
@@ -49,14 +52,36 @@ class ListOfRequests:
                     else:
                         self.elements[card_type][card_name] = card_amnt
 
+    def turn_dict_into_table(self):
+        temp_table = list()
+        for c_type, c_names in self.elements.items():
+            for c_name, c_amnt in c_names.items():
+                temp_table.append({'card_amnt': c_amnt, 'card_name':c_name, 'card_type':c_type})
+        return temp_table
+
+    @staticmethod
+    def turn_table_into_df(table):
+        df = pd.DataFrame(table)
+        return df
+
 
     def main(self):
         self.get_list_of_files()
         self.get_elements_from_all_files()
+        self.turn_table_into_df(self.turn_dict_into_table()).to_csv(Path(os.path.join(self.p, 'request.csv')),
+                                                                    index=False)
 
 
 if __name__ == '__main__':
+    # Get arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--input', help='Path where deck lists are located')
+    args = parser.parse_args()
+
     # Pass the address where lists are stored
-    obj = ListOfRequests(Path(f'C:\\Users\\familia\\Downloads\\poke_project'))
-    obj.main()
-    print(obj.elements)
+    try:
+        obj = ListOfRequests(Path(args.input))
+        obj.main()
+        print(f'Your request has been saved in {obj.p}')
+    except Exception as e:
+        print(e)
