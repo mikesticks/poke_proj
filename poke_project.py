@@ -1,9 +1,10 @@
 import os
+import logging
 import argparse
 import pandas as pd
 
 from pathlib import Path
-
+import unicodedata
 
 class ListOfRequests:
     def __init__(self, path):
@@ -18,7 +19,7 @@ class ListOfRequests:
     def get_elements_from_all_files(self):
         for file in self.lof:
             # Get content per file
-            with open(os.path.join(self.p, file), 'r') as f:
+            with open(os.path.join(self.p, file), 'r', encoding='utf-8') as f:
                 f_content = f.readlines()
             f.close()
 
@@ -26,6 +27,11 @@ class ListOfRequests:
             content_dict = dict()
             card_type = None
             for line in f_content:
+
+                # Remove any unicode char in line before processing info
+                n = unicodedata.normalize('NFKD', line)
+                line = ''.join([c for c in n if not unicodedata.combining(c)])
+
                 if line == '\t\n' or line == '\n':
                     continue
                 elif 'Trainer:' in line:
@@ -39,7 +45,7 @@ class ListOfRequests:
                     card_name = ' '.join(l_elements[1:-2]).replace(',', ' ') \
                         if 'Trainer' == card_type or 'Energy' == card_type \
                         else ' '.join(l_elements[1:]).replace(',', ' ')
-                    card_name = card_name.replace('\t\n', "") if '\t\n' in card_name else card_name.replace('\n', "")
+                    card_name = card_name.replace('\t\n', '') if '\t\n' in card_name else card_name.replace('\n', '')
                     card_amnt = int(l_elements[0])
 
                     # Create types if required
@@ -64,15 +70,16 @@ class ListOfRequests:
         df = pd.DataFrame(table)
         return df
 
-
     def main(self):
         self.get_list_of_files()
         self.get_elements_from_all_files()
-        self.turn_table_into_df(self.turn_dict_into_table()).to_csv(Path(os.path.join(self.p, 'request.csv')),
-                                                                    index=False)
+        return self.turn_table_into_df(self.turn_dict_into_table()).to_csv('request.csv', index=False)
 
 
 if __name__ == '__main__':
+    # Start logger
+    logging.basicConfig(level=logging.DEBUG )
+
     # Get arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', help='Path where deck lists are located')
@@ -82,6 +89,6 @@ if __name__ == '__main__':
     try:
         obj = ListOfRequests(Path(args.input))
         obj.main()
-        print(f'Your request has been saved in {obj.p}')
+        logging.info(f'Your request has been saved in request.csv')
     except Exception as e:
-        print(e)
+        logging.exception(e)
